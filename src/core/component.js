@@ -319,16 +319,18 @@ module.exports.registerComponentFn = function (name, fn) {
   }
   NewComponent = function (el, attr, id) {
     Component.call(this, el, attr, id);
-    const methods = this.setup( {
+    const methods = this.setup({
       context: this,
-      el, attr, id,
+      el,
+      attr,
+      id,
       sceneEl: el.sceneEl,
       scene: el.sceneEl.object3D,
       object3D: el.object3D,
-      data: buildData(el, this.name, this.schema, attr )
-    } );
+      data: buildData(el, this.name, this.schema, attr)
+    });
 
-    for( let key in methods ){
+    for (let key in methods) {
       this[ key ] = methods[ key ];
     }
 
