@@ -292,6 +292,70 @@ module.exports.registerComponent = function (name, definition) {
   return NewComponent;
 };
 
+module.exports.registerComponentFn = function (name, fn) {
+  var NewComponent;
+  var proto = {};
+
+  const definition = fn();
+
+  if (name.indexOf('__') !== -1) {
+    throw new Error('The component name `' + name + '` is not allowed. ' +
+                    'The sequence __ (double underscore) is reserved to specify an id' +
+                    ' for multiple components of the same type');
+  }
+
+  // Format definition object to prototype object.
+  Object.keys(definition).forEach(function (key) {
+    proto[key] = {
+      value: definition[key],
+      writable: true
+    };
+  });
+
+  if (components[name]) {
+    throw new Error('The component `' + name + '` has been already registered. ' +
+                    'Check that you are not loading two versions of the same component ' +
+                    'or two different components of the same name.');
+  }
+  NewComponent = function (el, attr, id) {
+    Component.call(this, el, attr, id);
+    const methods = this.setup( {
+      context: this,
+      el, attr, id,
+      sceneEl: el.sceneEl,
+      scene: el.sceneEl.object3D,
+      object3D: el.object3D,
+      data: buildData(el, this.name, this.schema, attr )
+    } );
+
+    for( let key in methods ){
+      this[ key ] = methods[ key ];
+    }
+
+    if (!el.hasLoaded) { return; }
+    this.updateProperties(this.attrValue);
+  };
+
+  NewComponent.prototype = Object.create(Component.prototype, proto);
+  NewComponent.prototype.name = name;
+  NewComponent.prototype.constructor = NewComponent;
+  NewComponent.prototype.system = systems && systems.systems[name];
+  NewComponent.prototype.play = wrapPlay(NewComponent.prototype.play);
+  NewComponent.prototype.pause = wrapPause(NewComponent.prototype.pause);
+
+  components[name] = {
+    Component: NewComponent,
+    dependencies: NewComponent.prototype.dependencies,
+    multiple: NewComponent.prototype.multiple,
+    parse: NewComponent.prototype.parse,
+    parseAttrValueForCache: NewComponent.prototype.parseAttrValueForCache,
+    schema: utils.extend(processSchema(NewComponent.prototype.schema)),
+    stringify: NewComponent.prototype.stringify,
+    type: NewComponent.prototype.type
+  };
+  return NewComponent;
+};
+
 /**
  * Builds component data from the current state of the entity, ultimately
  * updating this.data.
